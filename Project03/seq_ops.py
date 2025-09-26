@@ -1,4 +1,4 @@
-COMP_TRANS = str.maketrans('ACGTacgt', 'TGCAtcga')
+COMP_TRANS = str.maketrans('ACGTacgt', 'TGCAtgca')
 
 def reverse_complement(seq):
     """Get the reverse complement of a nucleotide sequence
@@ -15,10 +15,10 @@ def reverse_complement(seq):
     """
     
     # Used to easily translate strings
-    compStrDNA = str.maketrans('ACGTacgt', 'TGCAtcga')
+    compStrDNA = str.maketrans('ACGTacgt', 'TGCAtgca')
 
     # Translate then reverse seq
-    return seq.translate(COMPTRANS)[::-1]
+    return seq.translate(compStrDNA)[::-1]
 
 def get_seq(seq, start, end, strand, size):
     """Get the desired sequence
