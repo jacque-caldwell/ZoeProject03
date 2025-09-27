@@ -30,19 +30,52 @@ Put pseudocode in this box:
 From diagram shown in class 9/24/2025:
 
 ```
-Set of unaligned input sequences
-   read of the file --> list of sequences that have promoter (AGGAGG) in them;
-   and any promoter seq of GFF file with type "CDS"; these will be 50 bp long
+GibbsMotifFinder(seqs, k-length) DNA - list of strings?, k-length = 10 initially
+  
+  # Initialize lists to store possible motifs and background (possible motifs - 1)
+  poss_motif - list of k-length motifs from sequences
+  background - (possible motifs - 1)
+  
+  
+  Loop through seqs
+    CALL on create_poss_motifs (based on seqs) (one random from each seqs[]) to get k-length motifs of the seqs
+    APPEND to poss_motif
+      
+  #Set counter for j and IC
+  j=counter_ic=0
+       
+  while loop (j==10000 or counter_ic == 100). # convergence conditions
+      N = randomly index to pick one poss_motif
+  
+      new_seq = seqs[N]  # full sequence for randomly selected motif
+  
+      background = new set of seqs that doesn’t contain the randomly selected motif 
+      bgPWM = Calculate PWM(PFM(new_set))
+  
+      Create the second for loop within 
+       for in in length(new_seq-k)
+         # sliding window of k-mer bp over our 50bp
+             k_motif = new_seq[i:i+k]
+             new_k-mer_score = score_k-mer(seq, PWM)
+          
+      	if (new_kmer > than old_kmer)
+                  old_kmer = new_kmer
+                  motif = kMotif
+         pfm=build_pfm(motif)
+         new_ic = pfm_ic(pfm)   (need to start the counter_ic = 0) 
+   
+         if (fuzzy_diff (new_ic,old_ic))
+  	update old_ic = new_ic
+              counter_ic = 0
+          else
+               counter_ic+=1
+          j+=1
+   returning (pfm)
 
-  Randomly assign initial motif positions in each sequence
-
-
-  iterate:
-    Choose Sequence at Random
-
-    Create Motif and background model all other sequences (create PWM(PFM(sequ, score)))
-
-    Score all possible motifs in chosen sequence PWM.  loop over "40" looking at 10bp -> loop over score_kmer (PWM?). save somewhere....   want motif with the "highest frequency"
+def fuzzy_diff(x,y)
+{
+  return(abs(x-y)) > 0.000001
+}
 ```
 
 # Functions that we were given:
