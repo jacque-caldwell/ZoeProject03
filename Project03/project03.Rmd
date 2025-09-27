@@ -27,7 +27,7 @@ that you are about to install to work, don't worry. At a bare minimum, you only 
 
 ```{r, install_seqlogo}
 #reticulate::conda_install(packages=c('pdf2svg',"seqlogo"), forge=TRUE, channel="bioconda",conda="auto", additional_install_args="--solver=libmamba")
-reticulate::conda_install(packages=c("numpy","seqlogo"), forge=TRUE, channel="bioconda",conda="auto", additional_install_args="--solver=libmamba")
+#reticulate::conda_install(packages=c("numpy","seqlogo"), forge=TRUE, channel="bioconda",conda="auto", additional_install_args="--solver=libmamba")
 ```
 
 
@@ -57,6 +57,12 @@ Important considerations:
 Assumptions: 
 - We know $k$ as the length of expected motif
 - Each sequence contains the motif
+
+
+Probability of chosing position $m = \frac{A_{m}}{\sum_{l}A_{l}}$ for positions $l$ in DNAi
+
+
+**Note:** I have also added a function to `motif_ops.py` that will calculate the information content of your motifs. This is useful to observe the progression of your Gibbs sampler as well as a measure of convergence. You can use this function as `IC = pfm_ic(pfm)`. You should expect a slow increase of IC until it plateaus such as in the plot below from your lecture slides:   ![]('figures/Gibbs_Sampling.png')
 
 
 ```
@@ -134,41 +140,54 @@ def fuzzy_diff(x,y)
 {
   return(abs(x-y)) > 0.000001
 }
+```
+```{python}
+import numpy as np
+
+#Support functions for GibbsMotifFinder()
+
+def fuzzy_diff(x, y, epsilon):
+     """
+     Compares x and y within epsilon difference, and returns true or false
+  
+     Args:
+     x,y (floats):  values to be compared, are they within epislon of each other if so 
+        function returns TRUE, otherwise, returns FALSE
+     epsilon (float) - the amount of difference, or tolerance between X & Y that we will allow
+  
+     Returns (boolean): if abs(x-y) os greater than epislon
+     """
+     
+     if (abs(x-y) > epsilon):
+          return(TRUE)
+     else:
+          return(FALSE)
+  
+  
+def create_possible_motif(sequence, k=10):
+     """
+     Create a k-length motif from a larger sequence, using random selection
  
+     Args:
+     sequence (string):   single sequence to find a random motif in
+     k (int):        length of proposed motif
+    
+     Returns:
+     string of length k: containing motif 
+     """
+     
+     high_val = len(sequence) - 10 # don't want to go beyond the end of the string
+     print("ERR:  Need to fix the following line returning Syntax Indentation error here")
+     N=0
+#     N = np.random.random_integers(low=0, high=high_value, 1)
+     return (sequence[N:N+10])
 
 ```
 
-Probability of chosing position $m = \frac{A_{m}}{\sum_{l}A_{l}}$ for positions $l$ in DNAi
-
-
-**Note:** I have also added a function to `motif_ops.py` that will calculate the information content of your motifs. This is useful to observe the progression of your Gibbs sampler as well as a measure of convergence. You can use this function as `IC = pfm_ic(pfm)`. You should expect a slow increase of IC until it plateaus such as in the plot below from your lecture slides:
-
-![]('figures/Gibbs_Sampling.png')
-
 
 ```{python}
-def fuzzy_diff(x,y):
-  '''
-  Compares x and y within epsilon difference, and returns true or false
-  '''
-
-  epislon = 0.000001
-  if (abs(x-y) > epsilon):
-    return(TRUE)
-  else:
-    return(FALSE)
-  
-def create_possible_motif(seq,k=10):
-  '''
-  Create a k-length motif from a larger sequence, using random selection
-  '''
-
-  N = np.random.choice(len(seq),1)
-  return (seq[N:N+10])
-
-
 def GibbsMotifFinder (seqs, k, seed=42):
-    '''
+     """
     Function to find a pfm from a list of strings using a Gibbs sampler
     
     Args: 
@@ -179,54 +198,59 @@ def GibbsMotifFinder (seqs, k, seed=42):
     Returns:
         pfm (numpy array): dimensions are 4xlength
         
-    '''
-  len_seq = len(seq)
-  background = [] # will be length(seq)-1
-  poss_motif = [] 
+    """
+     len_seq = len(seq)
+     background = [] # will be length(seq)-1
+     poss_motif = [] 
  
-  for seq in seqs:
-    poss_motif.append(create_possible_motif(seq,k))
+     for seq in seqs:
+          poss_motif.append(create_possible_motif(seq,k))
     
-  j=counter_ic=0
+     j = counter_ic = 0
   
-  while ((j!=10000) or (counter_ic!=100)):
-    
-    N = random.randrange(0,len_seq)
-    new_seq = seqs[N]
+     while ((j != 10000) or (counter_ic != 100)):
+          print("ERR: Need to fix the np.random... line below this in code, syntax error, commented out, remove N=0")
+          N = 5
+#          N = np.random.integers(0,len_seq,seed)
+          new_seq = seqs[N]
 
 # create new_set of seqs that doesn’t contain the seqs[N] that the poss_motif[N] is associated with.
     
-    background = seqs.pop(N)
+          print("ERR: Need to fix seqs.pop, syntax error, N name not found",N)
+#          background = seqs.pop(N)
            
-    bgPWM = build_PWM(build_PFM(background,k))
+          bgPWM = build_pwm(build_pfm(background,k))
      
-    old_kmer = old_ic = 0
+          old_kmer = old_ic = 0
     
-    list_of_motifs=[]
-    scores_of_motifs=[]
+          list_of_motifs=[]
+          scores_of_motifs=[]
 
     # Create the second for loop within 
-    for i in (len(new_seq)-k):
+          for i in (len(new_seq)-k):
       # sliding window of k-mer bp over our 50bp
-      k_motif = new_seq[i:i+k]
-      list_of_motifs.append(k_motif)
-      new_kmer = score_kmer(k_motif, bgPWM)
-      scores_of_motifs.append(new_kmer)  
+               k_motif = new_seq[i:i+k]
+               list_of_motifs.append(k_motif)
+               new_kmer = score_kmer(k_motif, bgPWM)
+               scores_of_motifs.append(new_kmer)  
     
-    best_index = scores_of_motifs.index(max(scores_of_motifs))  
+          best_index = scores_of_motifs.index(max(scores_of_motifs))  
     
-    motif = list_of_motifs[best_index]
+          motif = list_of_motifs[best_index]
     
-    pfm = build_pfm(motif,k)
-    new_ic = pfm_ic(pfm) 
+          pfm = build_pfm(motif,k)
+          new_ic = pfm_ic(pfm) 
 
-    if (fuzzy_diff (new_ic,old_ic)):
-	    old_ic = new_ic
-      counter_ic = 0
-    else:
-      counter_ic+=1
-    j+=1
-return (pfm)
+          if (fuzzy_diff (new_ic,old_ic,0.000001)):
+               old_ic = new_ic
+               counter_ic = 0
+          else:
+               counter_ic+=1
+    
+          j+=1
+  #end of while loop
+  
+     return (pfm)
 ```
 
 
@@ -235,22 +259,20 @@ return (pfm)
 # You do not need to edit this or the section below. This is the Driver program
 
 #read promoters, store in a list of strings
-seq_file="data/GCF_000009045.1_ASM904v1_genomic.fna.gz"
-gff_file="data/GCF_000009045.1_ASM904v1_genomic.gff.gz"
+seq_file="data/GCF_000009045.1_ASM904v1_genomic.fna"
+gff_file="data/GCF_000009045.1_ASM904v1_genomic.gff"
 
 seqs = []
 
 for name, seq in get_fasta(seq_file): # For each entry in our FASTA file
     for gff_entry in get_gff(gff_file): # For each entry in our GFF file
         if gff_entry.type == 'CDS': # If this is a coding sequence
-            promoter_seq = get_seq(seq, gff_entry.start, gff_entry.end, gff_entry.strand, 50) # Extract 50 bp as a promoter
-    
-            """
-            Because the gibbs sampling assumption is broken in just using promoters,
-            and because it takes very long time to randomly progress through so many
-            regions, for this example we will pre-filter for sequences that all contain
-            part of the shine-dalgarno motif:
-            """
+            promoter_seq = get_seq(seq, gff_entry.start, gff_entry.end, gff_entry.strand, 50) # Extract 50 bp as a promoter             #'''
+            #Because the gibbs sampling assumption is broken in just using promoters,
+            #and because it takes very long time to randomly progress through so many
+            #regions, for this example we will pre-filter for sequences that all contain
+            #part of the shine-dalgarno motif:
+            #'''
             if "AGGAGG" in promoter_seq:
                 seqs.append(promoter_seq)
 ```
