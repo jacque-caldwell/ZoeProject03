@@ -32,6 +32,7 @@ reticulate::conda_install(packages=c("seqlogo"), forge=TRUE, channel="bioconda",
 
 
 ```{python LoadPackages}
+import numpy as np
 import random
 import seqlogo
 
@@ -134,13 +135,15 @@ def GibbsMotifFinder (seqs, k, seed=42):
     background = []  # will be length(seq)-1
     poss_motif = []  # k-length of each seq
     pfm = []
+    old_ic = 0
       
     for seq in seqs:
       poss_motif.append(create_possible_motif(seq,k))
     
         
     j = counter_ic = 0  # Set counter for j and IC
-    while ((j > 10000) or (counter_ic > 100)):
+    
+    while ((j < 1000) or (counter_ic < 10)): # REMEMBER to fix the if statement below 
 
       N = random.randint(0, len_seq-1) #works without giving an array
 
@@ -148,10 +151,8 @@ def GibbsMotifFinder (seqs, k, seed=42):
       background = seqs[:N] + seqs[N+1:]
       bgPWM = build_pwm(build_pfm(background,k))
         
-          
       list_of_motifs=[]
       scores_of_motifs=[]
-      old_ic = 0
         
       # Create the second for loop within 
       for i in range(len(new_seq)-k):  
@@ -166,7 +167,9 @@ def GibbsMotifFinder (seqs, k, seed=42):
       motif = list(list_of_motifs[best_index])
             
       pfm = build_pfm(motif,k)
+           
       new_ic = pfm_ic(pfm) 
+
             
       if (fuzzy_diff (new_ic,old_ic,0.000001)):
         old_ic = new_ic
@@ -174,12 +177,22 @@ def GibbsMotifFinder (seqs, k, seed=42):
       else:
         counter_ic+=1
                 
-      
       j+=1
-        #end of while loop
+     
+      if ((counter_ic == 2) or (j==1000)):
+        print("the returned PFM is for {motif}:",motif)
+        return(np.array(pfm))
+      
+      #end of while loop
                 
+    print("before return:pfm",pfm)
     return (pfm)
+
+#Testing code
+promoter_pfm = GibbsMotifFinder(seqs,10)
 ```
+
+
 
 
 ```{python Driver}
