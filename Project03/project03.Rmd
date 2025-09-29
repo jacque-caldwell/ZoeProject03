@@ -116,6 +116,80 @@ def create_possible_motif(sequence, k=10):
 
 ```
 
+```{python MaxGibbsMotifFinder}
+def GibbsMotifFinder1 (seqs, k, seed=42):
+    """
+    Function to find a pfm from a list of strings using a Gibbs sampler
+  
+    Args: 
+      seqs (str list): a list of sequences, not necessarily in same lengths
+      k (int): the length of motif to find
+      seed (int, default=42): seed for np.random
+    
+    Returns:
+      pfm (numpy array): dimensions are 4xlength
+      
+    """
+    len_seq = len(seqs)
+    background = []  # will be length(seq)-1
+    poss_motif = []  # k-length of each seq
+    pfm = []
+    old_ic = 0
+      
+    for seq in seqs:
+      poss_motif.append(create_possible_motif(seq,k))
+    
+        
+    j = counter_ic = 0  # Set counter for j and IC
+    
+    while ((j < 1000) or (counter_ic < 10)): # REMEMBER to fix the if statement below 
+
+      N = random.randint(0, len_seq-1) #works without giving an array
+
+      new_seq = seqs[N]
+      background = seqs[:N] + seqs[N+1:]
+      bgPWM = build_pwm(build_pfm(background,k))
+        
+      list_of_motifs=[]
+      scores_of_motifs=[]
+        
+      # Create the second for loop within 
+      for i in range(len(new_seq)-k):  
+        # sliding window of k-mer bp over our 50bp
+        k_motif = new_seq[i:i+k]
+        list_of_motifs.append(k_motif)
+        new_kmer = score_kmer(k_motif, bgPWM)
+        scores_of_motifs.append(new_kmer)  
+            
+      best_index = scores_of_motifs.index(max(scores_of_motifs))  
+            
+      motif = list(list_of_motifs[best_index])
+            
+      pfm = build_pfm(motif,k)
+           
+      new_ic = pfm_ic(pfm) 
+
+            
+      if (fuzzy_diff (new_ic,old_ic,0.000001)):
+        old_ic = new_ic
+        counter_ic = 0
+      else:
+        counter_ic+=1
+                
+      j+=1
+     
+      if ((counter_ic == 2) or (j==1000)):
+        print("the returned PFM is for {motif}:",motif)
+        return(np.array(pfm))
+      
+      #end of while loop
+                
+    print("before return:pfm",pfm)
+    return (pfm)
+
+#Testing code
+promoter_pfm = GibbsMotifFinder(seqs,10)
+```
 
 ```{python}
 def choose_motif(motif_list, scores):
@@ -138,7 +212,8 @@ def choose_motif(motif_list, scores):
 ```
 
 
-```{python GibbsMotifFinder}
+
+```{python GibbsMotifFinderV2}
 def GibbsMotifFinder (seqs, k, seed=42):
     """
     Function to find a pfm from a list of strings using a Gibbs sampler
@@ -160,17 +235,19 @@ def GibbsMotifFinder (seqs, k, seed=42):
       
     for seq in seqs:
       poss_motif.append(create_possible_motif(seq,k))
-      poss_motif_score.append(0) #initialize everyone to 0
+      poss_motif_score.append(0) #initialize everyone to 0 
+      ## poss_motif should be used for calculating the PWM --> I don't think a score is needed for each possible motif 
     
     j = counter_ic = 0  # Set counter for j and IC
     
     while ((j < 1000) and (counter_ic < 10)): 
 
-      N = random.randint(0, len_seq-1) #works without giving an array
+      N = random.randint(0, len_seq-1)  # generate random number for selecting motif/sequence
 
-      new_seq = seqs[N]
+      new_seq = seqs[N]  # store full length sequence to loop through and calculate k-scores and ICs
       
-      background = seqs[:N] + seqs[N+1:] # set of seqs that doesn't include new_seq
+      ## background = poss_motif[:N] + poss_motif[N+1:]
+      background = seqs[:N] + seqs[N+1:]  # set of seqs that doesn't include new_seq
       
       bgPWM = build_pwm(build_pfm(background,k)) # create background PWM
       
@@ -179,8 +256,8 @@ def GibbsMotifFinder (seqs, k, seed=42):
         # sliding window of k-mer bp over our 50bp
         k_motif = new_seq[i:i+k]        
         if !(k_motif in poss_motif): # if it isn't in the list then add it, and add a new item to score as well
-          poss_motif.append(create_possible_motif(k_motif,k))
-          new_ic = pfm_ic(build_pfm(poss_motif,k))
+          poss_motif.append(create_possible_motif(k_motif,k))  # k-motif is already length k 
+          new_ic = pfm_ic(build_pfm(poss_motif,k))  # calculating pfm of multiple motifs, not using k-score
           poss_motif_score.append(new_ic)
         else:
           new_ic=pfm_ic(build_pfm(poss_motif,k)) # calc the new possible IC
@@ -197,7 +274,7 @@ def GibbsMotifFinder (seqs, k, seed=42):
       # now check to see if the current_IC matches the one we did last time through the loop
       if not (fuzzy_diff (current_ic,poss_motif_score[N],0.000001)):
         # if they don't match, then re-set and start again with another motif
-        poss_motif_score[N] = current_ic
+        poss_motif_score[N] = current_ic  ## poss_motif_score includes the bg scores and N is a random number we generated to remove from the poss_motif list 
         counter_ic = 0
       else:
         # if they do match, then we have converged
@@ -215,7 +292,80 @@ promoter_pfm
 
 ```
 
-
+```{python V3}
+import math
+def GibbsMotifFinder (seqs, k, seed=42):
+    """
+    Function to find a pfm from a list of strings using a Gibbs sampler
+  
+    Args: 
+      seqs (str list): a list of sequences, not necessarily in same lengths
+      k (int): the length of motif to find
+      seed (int, default=42): seed for np.random
+    
+    Returns:
+      pfm (numpy array): dimensions are 4xlength
+      
+    """
+    len_seq = len(seqs)
+    background = []  # will be length(seq)-1
+    all_motifs = []  # k-length of each possible motif
+    pfm = []
+    old_ic = 0
+      
+      
+    for seq in seqs:
+      all_motifs.append(create_possible_motif(seq,k))
+      ## poss_motif should be used for calculating the PWM --> I don't think a score is needed for each possible motif 
+        
+      j = counter_ic = 0  # Set counter for j and IC
+        
+    while ((j < 1000) and (counter_ic < 10)): 
+          
+      N = random.randint(0, len_seq-1)  # generate random number for selecting motif/sequence
+          
+      new_seq = seqs[N]  # store full length sequence to loop through and calculate k-scores and ICs
+          
+      background = all_motifs[:N] + all_motifs[N+1:]  # all Motifs except Motifi
+      bgPWM = build_pwm(build_pfm(background,k))  # PWM constructed from all Motifs except for Motifi
+          
+      poss_motifs = []  # list of possible motifs within the new_seq
+      poss_motif_scores = []  # list of scores for each possible motifs in new_seq
+      # NOTE:  DNAi arrays are local arrays only, they need to be reset each time you go through the big loop
+      for i in range(len(new_seq)-k):  
+        # sliding window of k-mer bp over our 50bp
+        k_motif = new_seq[i:i+k]      
+            
+        ## if statement not needed, bc as it slides over it should not be the same unless it is all k bases are the same 
+         # if !(k_motif in poss_motif): # if it isn't in the list then add it, and add a new item to score as well
+        poss_motifs.append(k_motif) 
+        new_kmer = score_kmer(k_motif, bgPWM)
+        poss_motif_scores.append(new_kmer)  
+            
+      # poss_motif_scores would include negative values, therefore, we need to handle it for probablistic motif selection. We can convert log-odds to probabilities using exp
+      exp_scores = [math.exp(score) for score in poss_motif_scores] 
+      rand_index = choose_motif(poss_motifs, exp_scores) # probabilistic motif selection
+      pfm = build_pfm(poss_motifs[rand_index], k)  # build pfm from the probabilistic selected motif
+            
+      current_ic = pfm_ic(pfm)
+            
+      if (fuzzy_diff (current_ic,old_ic,0.000001)):  #if the difference is minimal, add 1 to counter
+        counter_ic += 1
+      else:
+        counter_ic = 0
+      print(f"J: {j}, PFM:{pfm} , Old IC: {old_ic}, Current IC: {current_ic}, IC Counter: {counter_ic}")
+      
+      old_ic = current_ic          
+      j+=1
+      
+    #end of while loop; if we have reached here, there was no convergence return the last motif checked
+    print("Final PFM:",pfm)
+    return (np.array(pfm))
+              
+#Testing code
+promoter_pfm = GibbsMotifFinder(seqs,10)
+promoter_pfm
+```
 
 
 ```{python Driver}

@@ -18,7 +18,7 @@ def reverse_complement(seq):
     compStrDNA = str.maketrans('ACGTacgt', 'TGCAtgca')
 
     # Translate then reverse seq
-    return seq.translate(compStrDNA)[::-1]
+    return seq.translate(COMP_TRANS)[::-1]
 
 def get_seq(seq, start, end, strand, size):
     """Get the desired sequence

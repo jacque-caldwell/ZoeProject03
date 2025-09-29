@@ -25,9 +25,18 @@ To select a new position $m$ (as defined below) use random.choices() or
 numpy.random.choice()
 
 # Pseudocode
-Put pseudocode in this box:
-
-From diagram shown in class 9/24/2025:
+## Function to create possible motifs
+```
+create_possible_motif(full sequence, k-length)
+```
+## Function to handle fuzzy differences
+```
+fuzzy_diff(x,y)
+{
+  return(abs(x-y)) > 0.000001
+}
+```
+## GibbsMotifFinder
 
 ```
 GibbsMotifFinder(seqs, k-length) DNA - list of strings?, k-length = 10 initially
@@ -71,11 +80,6 @@ GibbsMotifFinder(seqs, k-length) DNA - list of strings?, k-length = 10 initially
                counter_ic+=1
           j+=1
    returning (pfm)
-
-def fuzzy_diff(x,y)
-{
-  return(abs(x-y)) > 0.000001
-}
 ```
 
 # Functions that we were given:
