@@ -73,15 +73,30 @@ Probability of chosing position $m$ = \frac{A_{m}}{\sum_{l}A_{l}}$ for positions
 **Note:** I have also added a function to `motif_ops.py` that will calculate the information content of your motifs. This is useful to observe the progression of your Gibbs sampler as well as a measure of convergence. You can use this function as `IC = pfm_ic(pfm)`. You should expect a slow increase of IC until it plateaus such as in the plot below from your lecture slides:   ![]('figures/Gibbs_Sampling.png')
 
 
+```{python Driver}
+# Here we test your Gibbs sampler.
+# You do not need to edit this or the section below. This is the Driver program
+
+#read promoters, store in a list of strings
+seq_file="data/GCF_000009045.1_ASM904v1_genomic.fna"
+gff_file="data/GCF_000009045.1_ASM904v1_genomic.gff"
+
+seqs = []
+
+for name, seq in get_fasta(seq_file): # For each entry in our FASTA file
+    for gff_entry in get_gff(gff_file): # For each entry in our GFF file
+        if gff_entry.type == 'CDS': # If this is a coding sequence
+            promoter_seq = get_seq(seq, gff_entry.start, gff_entry.end, gff_entry.strand, 50) # Extract 50 bp as a promoter             #'''
+            #Because the gibbs sampling assumption is broken in just using promoters,
+            #and because it takes very long time to randomly progress through so many
+            #regions, for this example we will pre-filter for sequences that all contain
+            #part of the shine-dalgarno motif:
+            #'''
+            if "AGGAGG" in promoter_seq:
+                seqs.append(promoter_seq)
+                seqs.append(reverse_complement(promoter_seq)) 
 ```
-GibbsMotifFinder(DNA, k-length)
-    random pick of k-length sequences from each line of DNA as Motifs
-    for j ← 1 to 10000 or Motifs stops changing
-        i ← Random(N) where N is number of DNA entries
-        PWM ← PWM constructed from all Motifs except for Motifi
-        Motifi ← select position m from PWM-scored k-mers in DNAi in probabilistic fashion from score distribution
-    return PFM
-```
+
 ```{python support_functions}
 def create_possible_motif(sequence, k=10):
     """
@@ -119,27 +134,7 @@ def fuzzy_diff(x, y, epsilon):
 
 
 
-def choose_motif(motif_list, scores):
-  '''
-  function choose_motif takes a string of motif values and scores, and selects one in the list randomly, returning the index into the array given.  Scores should come from the calculations on the motif_list, so they need to be of the same length
-  
-  args:
-    motif_list (list of strings): list of motifs 
-    scores (list of floats):      list of information scores that are associated directly with the motifs in the prior array.
-  '''
-  if (motif_list):
-    if len(motif_list) == len(scores):
-      picked_item = random.choices(motif_list, weights=scores, k=1)[0]  
-      return(motif_list.index(picked_item))
-    else:
-      print(f"Error: choose_motif(): {motif_list}, {current_ic} are not the same length")
-  else:
-    print("Error: No list of motifs found")
-    return("")
-
-
-
-def convert_exp( poss_scores ):
+def normalized_scores( poss_scores ):
   ''' 
   Converts a list of kmer scores into normalized values, and returns a list of normalzed floats, normalization is 2^(value)/sum(all values in pos & neg list)
     
@@ -160,11 +155,39 @@ def convert_exp( poss_scores ):
   probabilities = [score/sum_exp_scores for score in exp_scores]
   
   return(probabilities)
+
+
+
+def choose_motif(motif_list, weights):
+  '''
+  function choose_motif takes a string of motif values and scores, and selects one in the list randomly, returning the index into the array given.  Scores should come from the calculations on the motif_list, so they need to be of the same length
   
-  
+  args:
+    motif_list (list of strings): list of motifs 
+    weights (list of floats): list of probailities of the scores associated with the motifs.
+  '''
+  if (motif_list):
+    if len(motif_list) == len(weights):
+      picked_item = random.choices(motif_list, weights, k=1)[0]  
+      return(picked_item)
+    else:
+      print(f"Error: choose_motif(): {motif_list}, {current_ic} are not the same length")
+  else:
+    print("Error: No list of motifs found")
+    return("")
 
 ```
 
+#### Given Pseudocode for `GibbsMotifFinder()`
+```
+GibbsMotifFinder(DNA, k-length)
+    random pick of k-length sequences from each line of DNA as Motifs
+    for j ← 1 to 10000 or Motifs stops changing
+        i ← Random(N) where N is number of DNA entries
+        PWM ← PWM constructed from all Motifs except for Motifi
+        Motifi ← select position m from PWM-scored k-mers in DNAi in probabilistic fashion from score distribution
+    return PFM
+```
 
 ```{python GibbsMotifFinder}
 def GibbsMotifFinder (seqs, k, seed=42):
@@ -208,31 +231,32 @@ def GibbsMotifFinder (seqs, k, seed=42):
       poss_motifs = []  # list of possible motifs within the new_seq
       poss_motif_scores = []  # list of scores for each possible motifs in new_seq
       
-      # NOTE:  DNAi arrays are local arrays only, they need to be reset each time you go through the big loop
+      # sliding window of k-mer bp over our 50bp
       for i in range(len(new_seq)-k):  
-        # sliding window of k-mer bp over our 50bp
+        # selected motifs
         k_motif = new_seq[i:i+k]      
-            
-        ## if statement not needed, bc as it slides over it should not be the same unless it is all k bases are the same 
-         # if !(k_motif in poss_motif): # if it isn't in the list then add it, and add a new item to score as well
         poss_motifs.append(k_motif) 
-        new_kmer = score_kmer(k_motif, bgPWM)
-        poss_motif_scores.append(new_kmer)  
+        
+        # scores of selected motifs
+        kmer_score = score_kmer(k_motif, bgPWM)
+        poss_motif_scores.append(kmer_score)  
             
       # poss_motif_scores would include negative values, therefore, we need to handle it for probablistic motif selection. We can convert log-odds to probabilities using exp and dividing by the sum
-      weights = convert_exp(poss_motif_scores) 
+      weights = normalized_scores(poss_motif_scores) 
       
-      rand_index = choose_motif(poss_motifs, weights) # probabilistic motif selection
+      selected_motif = choose_motif(poss_motifs, weights) # probabilistic motif selection
       
-      all_motifs[N] = poss_motifs[rand_index]
+      all_motifs[N] = selected_motif
       
-      motif = []
-      motif.append(poss_motifs[rand_index])
+      # remove at the end
+      motif = []  
+      motif.append(selected_motif)
+      
       #pfm = build_pfm(motif, k)  # build pfm from the probabilistic selected motif
       pfm = build_pfm(all_motifs, k)      
       current_ic = pfm_ic(pfm)
             
-      if (fuzzy_diff (current_ic,old_ic, 0.0025)):  #if the difference is minimal, add 1 to counter
+      if (fuzzy_diff (current_ic,old_ic, 0.002)):  #if the difference is minimal, add 1 to counter
         counter_ic += 1
       else:
         counter_ic = 0
@@ -251,29 +275,7 @@ promoter_pfm = GibbsMotifFinder(seqs,10)
 ```
 
 
-```{python Driver}
-# Here we test your Gibbs sampler.
-# You do not need to edit this or the section below. This is the Driver program
 
-#read promoters, store in a list of strings
-seq_file="data/GCF_000009045.1_ASM904v1_genomic.fna"
-gff_file="data/GCF_000009045.1_ASM904v1_genomic.gff"
-
-seqs = []
-
-for name, seq in get_fasta(seq_file): # For each entry in our FASTA file
-    for gff_entry in get_gff(gff_file): # For each entry in our GFF file
-        if gff_entry.type == 'CDS': # If this is a coding sequence
-            promoter_seq = get_seq(seq, gff_entry.start, gff_entry.end, gff_entry.strand, 50) # Extract 50 bp as a promoter             #'''
-            #Because the gibbs sampling assumption is broken in just using promoters,
-            #and because it takes very long time to randomly progress through so many
-            #regions, for this example we will pre-filter for sequences that all contain
-            #part of the shine-dalgarno motif:
-            #'''
-            if "AGGAGG" in promoter_seq:
-                seqs.append(promoter_seq)
-                seqs.append(reverse_complement(promoter_seq)) 
-```
 
 
 ```{python}

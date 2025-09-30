@@ -25,61 +25,112 @@ To select a new position $m$ (as defined below) use random.choices() or
 numpy.random.choice()
 
 # Pseudocode
-## Function to create possible motifs
+## Driver
 ```
-create_possible_motif(full sequence, k-length)
+READ files 
+INITIALIZE list for sequences
+
+LOOP through files to get promoter sequences if gff_entry is a 'CDS'
+  IF 'AGGAGG' is in the promoter sequence
+    APPEND promoter sequence to list of sequences
+    APPEND complementary sequence to list of sequences using reverse_complement(promoter sequence) 
 ```
-## Function to handle fuzzy differences
+
+## Support Functions for GibbsMotifFinder
+### Function to create k-length motifs of the full length sequences
 ```
-fuzzy_diff(x,y)
-{
-  return(abs(x-y)) > 0.000001
-}
-```
-## GibbsMotifFinder
+FUNCTION create_possible_motif(full sequence, k-length)
+  N <- random integer between 0 to the sequence - k-length 
+  RETURN k-length sequence starting at the Nth position
 
 ```
-GibbsMotifFinder(seqs, k-length) DNA - list of strings?, k-length = 10 initially
+### Function to handle fuzzy differences between k-mer scores
+```
+FUNCTION fuzzy_diff(x: first value, 
+                    y: second value, 
+                    epsilon: tolerance between x and y)
+  
+  IF the absolute difference between x and y is less than epsilon
+    RETURN true
+  ELSE 
+    RETURN false
+```
+### Function to normalize and log2 scores 
+```
+FUNCTION normalized_scores(poss_scores: list of k-mer scores)
+  exp_scores <- CALCULATE the exp2 of the poss_scores to handle negative log2 values
+  sum_exp_scores <- CALCULATE the sum of the exp_scores 
+  probabilities <- CALCULATE the probability of each score in poss_scores by dividing the exp_scores and the sum_exp_scores
+  
+  RETURN probabilities
+```
+### Function to choose motif using probablistic selection 
+```
+FUNCTION choose_motif(motif_list: list of kmers from the selected sequence, 
+                      weights: scores of the kmers from the selected sequence based on the background PWM)
+  
+  IF motif_list exists
+    IF the length of the motif_list and scores are the same 
+      picked_item <- SELECT random motif from list based on their scores using random.choices()
+      RETURN the index of the picked_item
+    ELSE
+      inform user that the motif_list and scores are not the same length
+  ELSE
+    inform the user that there were no motifs found
+```
+
+## GibbsMotifFinder
+```
+GibbsMotifFinder(seqs: list of full length sequences, 
+                 k: length of desired motifs)
   
   # Initialize lists to store possible motifs and background (possible motifs - 1)
-  poss_motif - list of k-length motifs from sequences
-  background - (possible motifs - 1)
+  all_motifs <- list of k-length motifs from sequences
+  background <- list of motifs except motifi for PWM
+  pfm <- array to store PFMs
+  old_ic <- comparison for IC, start with 0 then update in the loop
+  j <- loop counter
+  counter_ic <- counter for IC (if IC stays the same, it should update, else reset to 0)
   
   
-  Loop through seqs
-    CALL on create_poss_motifs (based on seqs) (one random from each seqs[]) to get k-length motifs of the seqs
-    APPEND to poss_motif
+  
+  FOR each seq in seqs
+    CALL on create_poss_motifs to get k-length motifs of the seq
+    APPEND to all_motifs
       
-  #Set counter for j and IC
-  j=counter_ic=0
        
-  while loop (j==10000 or counter_ic == 100). # convergence conditions
-      N = randomly index to pick one poss_motif
+  WHILE (j<10000 or counter_ic < 100). # convergence conditions
+      N <- random index to pick one motif from all_motifs
+      new_seq <- seqs[N]  # full sequence for randomly selected motif
+      background <- all motifs except randomly selected at index N
+      bgPWM <- Calculate PWM for the background list
+      
+      poss_motifs <- INITIALIZE list of all possible motifs within the new_seq 
+      poss_motif_scores <- INITIALIZE list of scores for each possible motif within the new_seq
   
-      new_seq = seqs[N]  # full sequence for randomly selected motif
-  
-      background = new set of seqs that doesn’t contain the randomly selected motif 
-      bgPWM = Calculate PWM(PFM(new_set))
-  
-      Create the second for loop within 
-       for in in length(new_seq-k)
-         # sliding window of k-mer bp over our 50bp
-             k_motif = new_seq[i:i+k]
-             new_k-mer_score = score_k-mer(seq, PWM)
-          
-      	if (new_kmer > than old_kmer)
-                  old_kmer = new_kmer
-                  motif = kMotif
-         pfm=build_pfm(motif)
-         new_ic = pfm_ic(pfm)   (need to start the counter_ic = 0) 
-   
-         if (fuzzy_diff (new_ic,old_ic))
-  	update old_ic = new_ic
-              counter_ic = 0
-          else
-               counter_ic+=1
-          j+=1
-   returning (pfm)
+      CREATE sliding window for k bps of the full sequence 
+        k_motif <- k-length sequence starting from index i
+        APPEND k_motif to poss_motifs
+        
+        kmer_score <- CALCULATE score of k_motif using score_kmer() and the bgPWM
+        APPEND kmer_score to poss_motif_scores
+      
+      weights <- CALCULATE normalized scores of poss_motif_scores using normalized_scores() to handle negative scores
+      selected_motif <- CALL choose_motif(poss_motifs, weights) to get probablistically selected motif
+      UPDATE index N of all_motifs using probablistically selected motif
+      
+      pfm <- BUILD pfm of the updated all_motif list with k values
+      current_ic <- IC of the pfm
+      
+      IF the difference of the current_ic and old_ic are minimal
+        UPDATE counter_ic by 1
+      ELSE
+        RESET counter_ic to 0
+      
+      UPDATE old_ic to current_ic
+      UPDATE j by 1
+
+   RETURN array of pfm after convergence
 ```
 
 # Functions that we were given:
@@ -105,16 +156,17 @@ GibbsMotifFinder(seqs, k-length) DNA - list of strings?, k-length = 10 initially
 * def get_seq(seq, start, end, strand, size):
         size (int): how far upstream to get extra sequence (default: 50)
 # Successes
-Description of the team's learning points
+* After multiple brainstorming sessions, we were able to successfully understand the processes of Gibb's Sampling.
 
 # Struggles
-Description of the stumbling blocks the team experienced
+* We initially struggled to understand how to incorporate the k-mer scores and figure out how Gibb's Sampling converges.
+* We had issues with tabbing in this project. Although our settings are set to 4 spaces for tabs, when programming, there were only 2 spaces, which caused a lot of indentation errors when running. 
 
 # Personal Reflections
-## Group Leader
+## Group Leader - Zoe Chow
 Group leader's reflection on the project
 
-## Other member
+## Other member - Jacqueline Caldwell
 Other members' reflections on the project
 
 # Generative AI Appendix
