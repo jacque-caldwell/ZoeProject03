@@ -423,7 +423,7 @@ for name, seq in get_fasta(seq_file): # For each entry in our FASTA file
             #'''
             if "AGGAGG" in promoter_seq:
                 seqs.append(promoter_seq)
-                seqs.append(reverse_complement(promoter_seq))
+                seqs.append(reverse_complement(promoter_seq)) 
 ```
 
 
