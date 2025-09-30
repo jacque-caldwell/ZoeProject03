@@ -94,7 +94,7 @@ for name, seq in get_fasta(seq_file): # For each entry in our FASTA file
             #'''
             if "AGGAGG" in promoter_seq:
                 seqs.append(promoter_seq)
-                seqs.append(reverse_complement(promoter_seq)) 
+                #seqs.append(reverse_complement(promoter_seq)) 
 ```
 
 ```{python support_functions}
@@ -234,12 +234,18 @@ def GibbsMotifFinder (seqs, k, seed=42):
       # sliding window of k-mer bp over our 50bp
       for i in range(len(new_seq)-k):  
         # selected motifs
-        k_motif = new_seq[i:i+k]      
+        k_motif = new_seq[i:i+k]     
         poss_motifs.append(k_motif) 
-        
-        # scores of selected motifs
         kmer_score = score_kmer(k_motif, bgPWM)
-        poss_motif_scores.append(kmer_score)  
+        poss_motif_scores.append(kmer_score)
+        
+        # reverse motifs
+        rev_motif = reverse_complement(k_motif)
+        poss_motifs.append(rev_motif)
+        rev_score = score_kmer(rev_motif, bgPWM)
+        poss_motif_scores.append(rev_score)
+        
+          
             
       # poss_motif_scores would include negative values, therefore, we need to handle it for probablistic motif selection. We can convert log-odds to probabilities using exp and dividing by the sum
       weights = normalized_scores(poss_motif_scores) 
@@ -256,7 +262,7 @@ def GibbsMotifFinder (seqs, k, seed=42):
       pfm = build_pfm(all_motifs, k)      
       current_ic = pfm_ic(pfm)
             
-      if (fuzzy_diff (current_ic,old_ic, 0.002)):  #if the difference is minimal, add 1 to counter
+      if (fuzzy_diff (current_ic,old_ic, 0.005)):  #if the difference is minimal, add 1 to counter
         counter_ic += 1
       else:
         counter_ic = 0
@@ -266,7 +272,7 @@ def GibbsMotifFinder (seqs, k, seed=42):
       j+=1
       
     #end of while loop; if we have reached here, there was no convergence return the last motif checked
-    print("Final PFM:",pfm)
+    print(f"Final motif: {motif}, PFM: {pfm}")
     return (np.array(pfm))
               
 #Testing code
