@@ -167,7 +167,9 @@ GibbsMotifFinder(seqs: list of full length sequences,
 Group leader's reflection on the project
 
 ## Other member - Jacqueline Caldwell
-Other members' reflections on the project
+I continued to struggle with github for part of this project, I believe that I have finally surmounted the issuees I've been having, and things are working for me on Explorer.  No more 'Explorer resource not available' issues for RStudio. Stils struggling with the lousy syntax errors that RStudio reports.  Not just that it isn't reporting the correct line numbers, but the errors themselves are often not even close to what the error should be.  VERY frustrating to debug this.
+
+I was very comfortable working in this team, as we balanced each others strengths, and were able to figure out the algorithm as we progressed with the project.  Conceptual struggles were generally overcome by consensus, and we each had our own successes with understanding, and coding.
 
 # Generative AI Appendix
 As per the syllabus
