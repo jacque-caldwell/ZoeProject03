@@ -22,9 +22,7 @@ reticulate::use_condaenv(condaenv = "r-reticulate")
 ---
 ## Imports
 
-For this project, it tasks you with creating a sequence logo to plot the motif sequences identified through your algorithm.
-This is a very minor portion of the project and is best used for checking your work. That means that if you cannot get the library
-that you are about to install to work, don't worry. At a bare minimum, you only need `numpy` to complete this project.
+We used numpy, math and random for the main part of the problem, and seq_logo for looking at and comparing results.
 
 ```{r, install_seqlogo}
 reticulate::conda_install(
@@ -35,7 +33,6 @@ reticulate::conda_install(
   additionall_install_args="--solver=libmamba"
 )
 ```
-
 
 ```{python LoadPackages}
 import numpy as np
@@ -52,26 +49,24 @@ from motif_ops import *
 ---
 ## Implement Gibbs Sampler
 
+Information from problem assignment:
 
 Gibbs sampling is a MCMC approach to identify enrichments. Here we will implement a method to identify motifs from a set of regions. 
 
 Important considerations:
 - We will need to score each sequence with a PWM using the `score_kmer()` or `score_sequence()` functions
-    - You will need to investigate into the help documenation and libraries to identify how best to use these functions. 
+  - You will need to investigate into the help documenation and libraries to identify how best to use these functions. 
 - These sites are often not strand-specific and so both scores on the negative as well as positive strand should be considered
 - To select a random sequence, use `random.randint()` or `numpy.random.randint()`
 - To select a new position $m$ (as defined below) use `random.choices()` or `numpy.random.choice()`  
 
 Assumptions: 
 - We know $k$ as the length of expected motif
-- Each sequence contains the motif
-
+- Each sequence contains the motif we are looking for
 
 Probability of chosing position $m$ = \frac{A_{m}}{\sum_{l}A_{l}}$ for positions $l$ in DNAi
 
-
 **Note:** I have also added a function to `motif_ops.py` that will calculate the information content of your motifs. This is useful to observe the progression of your Gibbs sampler as well as a measure of convergence. You can use this function as `IC = pfm_ic(pfm)`. You should expect a slow increase of IC until it plateaus such as in the plot below from your lecture slides:   ![]('figures/Gibbs_Sampling.png')
-
 
 ```{python Driver}
 # Here we test your Gibbs sampler.
@@ -94,7 +89,6 @@ for name, seq in get_fasta(seq_file): # For each entry in our FASTA file
             #'''
             if "AGGAGG" in promoter_seq:
                 seqs.append(promoter_seq)
-                #seqs.append(reverse_complement(promoter_seq)) 
 ```
 
 ```{python support_functions}
@@ -104,7 +98,7 @@ def create_possible_motif(sequence, k=10):
       
     Args:
       sequence (string):   single sequence to find a random motif in
-      k (int):        length of proposed motif
+      k (int):            length of proposed motif
         
     Returns:
       string of length k: containing motif 
@@ -112,7 +106,7 @@ def create_possible_motif(sequence, k=10):
           
           
     N = random.randint(0, len(sequence)-k)
-    return (sequence[N:N+10])
+    return (sequence[N:N+k])
 
 
 
@@ -136,20 +130,15 @@ def fuzzy_diff(x, y, epsilon):
 
 def normalized_scores( poss_scores ):
   ''' 
-  Converts a list of kmer scores into normalized values, and returns a list of normalzed floats, normalization is 2^(value)/sum(all values in pos & neg list)
+  Converts a list of kmer scores into normalized values, and returns a list of normalzed floats, normalization is 2^(value)/sum(all exp2 values in pos & neg list)
     
   Args:
     poss_scores:  list of floats-contains kmer scores for motifs on DNAi strand
     
   Output:
-    returns a list of nornmalized floats
+    returns a list of nornmalized floats (probabilities)
   '''
   
-  #sum_all = abs(sum(poss_scores))
-  #exp_total = [math.exp2(score)/sum_all for score in poss_scores]
-  #return(exp_total)
-  
-  #V2
   exp_scores = [math.exp2(score) for score in poss_scores]
   sum_exp_scores = sum(exp_scores)
   probabilities = [score/sum_exp_scores for score in exp_scores]
@@ -164,7 +153,9 @@ def choose_motif(motif_list, weights):
   
   args:
     motif_list (list of strings): list of motifs 
-    weights (list of floats): list of probailities of the scores associated with the motifs.
+    weights (list of floats): list of probabilities of the scores associated with the motifs.
+    
+  Output: string with name of motif that was choosen by our technique
   '''
   if (motif_list):
     if len(motif_list) == len(weights):
@@ -217,7 +208,7 @@ def GibbsMotifFinder (seqs, k, seed=42):
     for seq in master_seq:
       all_motifs.append(create_possible_motif(seq,k))
 
-    # Loop converges once either counter has reached its condition
+    # Loop completesonce either counter has reached its condition; OR the 
     while ((j < 10000) and (counter_ic < 100)): 
           
       N = random.randint(0, len_master-1)  # generate random number for selecting motif/sequence
@@ -251,36 +242,28 @@ def GibbsMotifFinder (seqs, k, seed=42):
       weights = normalized_scores(poss_motif_scores) 
       
       selected_motif = choose_motif(poss_motifs, weights) # probabilistic motif selection
-      
-      all_motifs[N] = selected_motif
-      
       # remove at the end
-      motif = []  
-      motif.append(selected_motif)
-      
-      #pfm = build_pfm(motif, k)  # build pfm from the probabilistic selected motif
       pfm = build_pfm(all_motifs, k)      
       current_ic = pfm_ic(pfm)
-            
-      if (fuzzy_diff (current_ic,old_ic, 0.005)):  #if the difference is minimal, add 1 to counter
-        counter_ic += 1
+        
+      if (fuzzy_diff (current_ic,old_ic, 0.005)):
+        counter_ic +=1
       else:
-        counter_ic = 0
-      print(f"J: {j}, {motif}, PFM:{pfm} , Old IC: {old_ic}, Current IC: {current_ic}, IC Counter: {counter_ic}")
+        counter_ic = 0 # values are not similar ; reinitialize count to 0
+        
+      all_motifs[N] = selected_motif # reset motif for this segment to new one
       
       old_ic = current_ic          
       j+=1
       
     #end of while loop; if we have reached here, there was no convergence return the last motif checked
-    print(f"Final motif: {motif}, PFM: {pfm}")
     return (np.array(pfm))
+              
               
 #Testing code
 # seqs = [ "ATTCGACACACAGGGAAATTT", "GCGCTGCAGCCCGGGGTTTAAA", "ACACACACTTTTGGGGGG"]
-promoter_pfm = GibbsMotifFinder(seqs,10)
+# promoter_pfm = GibbsMotifFinder(seqs,10)
 ```
-
-
 
 
 
@@ -293,13 +276,18 @@ promoter_pfm = GibbsMotifFinder(seqs,10)
 seqlogo.seqlogo(
     seqlogo.CompletePm(pfm = promoter_pfm.T), 
     format='png' , 
-    filename = './stuff/motif.png'
+    filename = './motif.png'
 )
+
 ```
 Let's see the output now. You can either directly open the image or type in the
 filename below. This image would also be included if you were to `knit` this document.
 
-![](stuff/motif.png)
+![](./motif.png)
+
+
+
+
 
 
 
