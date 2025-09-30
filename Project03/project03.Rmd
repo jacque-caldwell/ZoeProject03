@@ -295,6 +295,27 @@ def GibbsMotifFinder (seqs, k, seed=42):
 
 ```
 
+```{python}
+def convert_exp( poss_scores ):
+  ''' function convert_exp()
+    Converts a list of kmer scores into normalized values, and returns a list of normalzed floats, normalization is 2^(value)/sum(all values in pos & neg list)
+    
+    Args:
+      poss_scores:  list of floats-contains kmer scores for motifs on DNAi strand
+    
+    Output:
+      returns a list of nornmalized floats
+  '''
+  
+  sum_all = abs(sum(poss_scores))
+      
+  exp_total = [math.exp2(score)/sum_all for score in poss_scores]
+  
+  return(exp_total)
+
+```
+
+
 ```{python V3}
 def GibbsMotifFinder (seqs, k, seed=42):
     """
@@ -309,26 +330,31 @@ def GibbsMotifFinder (seqs, k, seed=42):
       pfm (numpy array): dimensions are 4xlength
       
     """
-    len_seq = len(seqs)
-    background = []  # will be length(seq)-1
+    
+    len_master = len(seqs)
+    master_seq = [] # seqs + rev(seqs) twice as long
     all_motifs = []  # k-length of each possible motif
+    background = []  # will be length(seq)-1
+ 
     pfm = []
     old_ic = 0
-      
-      
-    for seq in seqs:
+    
+    master_seq = seqs
+    
+    for seq in master_seq:
       all_motifs.append(create_possible_motif(seq,k))
-      ## poss_motif should be used for calculating the PWM --> I don't think a score is needed for each possible motif 
+    ## poss_motif should be used for calculating the PWM --> I don't think a score is needed for each possible motif
+
+    j = counter_ic = 0  # Set counter for j and IC
         
-      j = counter_ic = 0  # Set counter for j and IC
-        
-    while ((j < 1000) and (counter_ic < 10)): 
+    while ((j < 10000) and (counter_ic < 100)): 
           
-      N = random.randint(0, len_seq-1)  # generate random number for selecting motif/sequence
+      N = random.randint(0, len_master-1)  # generate random number for selecting motif/sequence
           
-      new_seq = seqs[N]  # store full length sequence to loop through and calculate k-scores and ICs
+      new_seq = master_seq[N]  # store full length sequence to loop through and calculate k-scores and ICs
           
       background = all_motifs[:N] + all_motifs[N+1:]  # all Motifs except Motifi
+  
       bgPWM = build_pwm(build_pfm(background,k))  # PWM constructed from all Motifs except for Motifi
           
       poss_motifs = []  # list of possible motifs within the new_seq
@@ -345,9 +371,15 @@ def GibbsMotifFinder (seqs, k, seed=42):
         poss_motif_scores.append(new_kmer)  
             
       # poss_motif_scores would include negative values, therefore, we need to handle it for probablistic motif selection. We can convert log-odds to probabilities using exp
-      exp_scores = [math.exp(score) for score in poss_motif_scores] 
+      exp_scores = convert_exp(poss_motif_scores) 
+      
       rand_index = choose_motif(poss_motifs, exp_scores) # probabilistic motif selection
-      pfm = build_pfm(poss_motifs[rand_index], k)  # build pfm from the probabilistic selected motif
+      
+      all_motifs[N] = poss_motifs[rand_index]
+      
+      motif = []
+      motif.append(poss_motifs[rand_index])
+      pfm = build_pfm(motif, k)  # build pfm from the probabilistic selected motif
             
       current_ic = pfm_ic(pfm)
             
@@ -355,7 +387,7 @@ def GibbsMotifFinder (seqs, k, seed=42):
         counter_ic += 1
       else:
         counter_ic = 0
-     # print(f"J: {j}, PFM:{pfm} , Old IC: {old_ic}, Current IC: {current_ic}, IC Counter: {counter_ic}")
+    #  print(f"J: {j}, {motif}, PFM:{pfm} , Old IC: {old_ic}, Current IC: {current_ic}, IC Counter: {counter_ic}")
       
       old_ic = current_ic          
       j+=1
@@ -365,8 +397,8 @@ def GibbsMotifFinder (seqs, k, seed=42):
     return (np.array(pfm))
               
 #Testing code
+# seqs = [ "ATTCGACACACAGGGAAATTT", "GCGCTGCAGCCCGGGGTTTAAA", "ACACACACTTTTGGGGGG"]
 #promoter_pfm = GibbsMotifFinder(seqs,10)
-#promoter_pfm
 ```
 
 
@@ -391,6 +423,7 @@ for name, seq in get_fasta(seq_file): # For each entry in our FASTA file
             #'''
             if "AGGAGG" in promoter_seq:
                 seqs.append(promoter_seq)
+                seqs.append(reverse_complement(promoter_seq))
 ```
 
 
@@ -410,3 +443,7 @@ Let's see the output now. You can either directly open the image or type in the
 filename below. This image would also be included if you were to `knit` this document.
 
 ![](stuff/motif.png)
+
+
+
+
