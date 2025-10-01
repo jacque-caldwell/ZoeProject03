@@ -169,7 +169,7 @@ def choose_motif(motif_list, weights):
 
 ```
 
-#### Given Pseudocode for `GibbsMotifFinder()`
+**Given Pseudocode for `GibbsMotifFinder()`**
 ```
 GibbsMotifFinder(DNA, k-length)
     random pick of k-length sequences from each line of DNA as Motifs
@@ -195,8 +195,6 @@ def GibbsMotifFinder (seqs, k, seed=42):
       
     """
     
-    len_master = len(seqs)
-    master_seq = seqs  # named master_seq to represent that all original and complementary seqs are present
     all_motifs = []  # seqs of k-length for each possible motif
     background = []  # will be Motifs - Motifi
  
@@ -205,15 +203,15 @@ def GibbsMotifFinder (seqs, k, seed=42):
     j = counter_ic = 0  # Set counter for j and IC
     
     # generate all_motif list 
-    for seq in master_seq:
+    for seq in seqs:
       all_motifs.append(create_possible_motif(seq,k))
 
     # Loop completesonce either counter has reached its condition; OR the 
     while ((j < 10000) and (counter_ic < 100)): 
           
-      N = random.randint(0, len_master-1)  # generate random number for selecting motif/sequence
+      N = random.randint(0, len(seqs)-1)  # generate random number for selecting motif/sequence
           
-      new_seq = master_seq[N]  # store full length sequence of index N to loop through and calculate k-scores and ICs
+      new_seq = seqs[N]  # store full length sequence of index N to loop through and calculate k-scores and ICs
           
       background = all_motifs[:N] + all_motifs[N+1:]  # all Motifs except Motif in index N
   
