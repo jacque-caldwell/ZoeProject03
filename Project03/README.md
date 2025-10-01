@@ -111,9 +111,13 @@ GibbsMotifFinder(seqs: list of full length sequences,
       CREATE sliding window for k bps of the full sequence 
         k_motif <- k-length sequence starting from index i
         APPEND k_motif to poss_motifs
+        rev_motif <- CALL on reverse_complent(k_motif)
+        APPEND rev_motif to poss_motifs
         
         kmer_score <- CALCULATE score of k_motif using score_kmer() and the bgPWM
         APPEND kmer_score to poss_motif_scores
+        rev_score <- CALCULATE score of reverse k_motif
+        APPEND rev_score to poss_motif_scores
       
       weights <- CALCULATE normalized scores of poss_motif_scores using normalized_scores() to handle negative scores
       selected_motif <- CALL choose_motif(poss_motifs, weights) to get probablistically selected motif
@@ -134,37 +138,39 @@ GibbsMotifFinder(seqs: list of full length sequences,
 ```
 
 # Functions that we were given:
-##data_readers.py
-* Class GffEntry:
+## data_readers.py
+* `Class GffEntry:
     __init__(self, args)
     __str__(self)
     __len__(self)
     __eq__(self, other)
-    __lt__(self, other)
+    __lt__(self, other)`
 
-* def get_gff((str)gff_file)
-* def get_fasta((str)file)
+* `def get_gff((str)gff_file)`
+* `def get_fasta((str)file)`
 
 ## motif_ops.py
-* def build_pfm(sequences: List[str], length: int) -> np.ndarray:
-* def build_pwm(pfm: np.ndarray) -> np.ndarray:
-* def score_kmer(seq: str, pwm: np.ndarray) -> float:
-* def pfm_ic(pfm: np.ndarray) -> float:
+* `def build_pfm(sequences: List[str], length: int) -> np.ndarray`
+* `def build_pwm(pfm: np.ndarray) -> np.ndarray`
+* `def score_kmer(seq: str, pwm: np.ndarray) -> float`
+* `def pfm_ic(pfm: np.ndarray) -> float`
 
-##seq_ops.py
-* def reverse_complement(seq):
-* def get_seq(seq, start, end, strand, size):
-        size (int): how far upstream to get extra sequence (default: 50)
+## seq_ops.py
+* `def reverse_complement(seq)`
+* `def get_seq(seq, start, end, strand, size)`
+
 # Successes
-* After multiple brainstorming sessions, we were able to successfully understand the processes of Gibb's Sampling.
+* After multiple brainstorming sessions, we were able to successfully understand the processes of Gibbs Sampling.
+* We implemented various print statements throughout our coding process to check that our code functioned as intended and to evaluate the motifs, PFMs, IC values, and counters produced in each loop iteration. This allowed us to identify when we were interpreting the Gibbs sampling process incorrectly and to re-evaluate which PFMs we needed to build and how the program converges. 
 
 # Struggles
-* We initially struggled to understand how to incorporate the k-mer scores and figure out how Gibb's Sampling converges.
-* We had issues with tabbing in this project. Although our settings are set to 4 spaces for tabs, when programming, there were only 2 spaces, which caused a lot of indentation errors when running. 
+* We initially struggled to understand how to incorporate the k-mer scores and figure out how Gibb sSampling converges.
+* We had issues with tabbing in this project. Although our settings are set to 4 spaces for tabs, when programming, there were only 2 spaces, which caused a lot of indentation errors when running.
+* We struggled with properly handling the complementary strands, before deciding to just take care of it in the loop instead of creating a master list of all forward and reverse sequences.
 
 # Personal Reflections
 ## Group Leader - Zoe Chow
-Group leader's reflection on the project
+When we initially started this project, I was honestly very confused. I had a hard time wrapping my head around Gibbs sampling in class, but after reading through the instructions and functions provided, and brainstorming with Jacqueline, I started to have a better understanding of how Gibbs sampling worked. Although we did not reach the correct implementation right away, after multiple rounds of pseudocoding and coding, we were able to get a good grasp of the algorithm. In fact, I felt very proud of us when watching the clarification video because we essentially had everything down except the handling of complementary sequences. Overall, I think we did a really good job figuring things out together. We definitely piggybacked on each other's ideas, and without that I do not think I would've understood Gibbs sampling as I do now.
 
 ## Other member - Jacqueline Caldwell
 I continued to struggle with github for part of this project, I believe that I have finally surmounted the issuees I've been having, and things are working for me on Explorer.  No more 'Explorer resource not available' issues for RStudio. Stils struggling with the lousy syntax errors that RStudio reports.  Not just that it isn't reporting the correct line numbers, but the errors themselves are often not even close to what the error should be.  VERY frustrating to debug this.
